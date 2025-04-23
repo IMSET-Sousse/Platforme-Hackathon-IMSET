@@ -2,14 +2,10 @@
   "python.languageServer": "Pylance",
   "python.analysis.typeCheckingMode": "basic",
   "python.analysis.diagnosticMode": "workspace",
-  "sonarlint.connectedMode.project": {
-    "connectionId": "https-sonarqube-maherdev-com"
-  },
   "python.sortImports.args": ["--profile", "django"],
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit",
     "source.fixAll.autopep8": "explicit",
-    "source.fixAll.sonarlint": "explicit",
     "source.fixAll.markdownlint": "explicit"
   },
   "editor.formatOnSave": true,
@@ -75,9 +71,7 @@
   "plantuml.exportOutDir": "./",
   "plantuml.exportFormat": "png",
   "plantuml.render": "PlantUMLServer",
-  "python.analysis.ignore": [
-    "**/odoo/addons/**"
-  ],
+  "python.analysis.ignore": ["**/odoo/addons/**"],
   "cSpell.language": "en,fr",
   "cSpell.words": [
     "categorie",
