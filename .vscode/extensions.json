@@ -1,0 +1,23 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.autopep8",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+    "foxundermoon.shell-format",
+    "davidanson.vscode-markdownlint",
+    "samuelcolvin.jinjahtml",
+    "jebbs.plantuml",
+    "sonarsource.sonarlint-vscode",
+    "ms-vscode.makefile-tools",
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-french",
+    "sibiraj-s.vscode-scss-formatter",
+    "sandy081.todotasks",
+    "bradlc.vscode-tailwindcss",
+    "imgildev.vscode-next-pack",
+    "william-voyek.vscode-nginx"
+  ]
+}

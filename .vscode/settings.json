@@ -1,0 +1,108 @@
+{
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticMode": "workspace",
+  "sonarlint.connectedMode.project": {
+    "connectionId": "https-sonarqube-maherdev-com"
+  },
+  "python.sortImports.args": ["--profile", "django"],
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll.autopep8": "explicit",
+    "source.fixAll.sonarlint": "explicit",
+    "source.fixAll.markdownlint": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.autopep8",
+    "editor.formatOnSave": true
+  },
+  "python.formatting.provider": "autopep8",
+  "python.formatting.autopep8Args": ["--max-line-length", "120"],
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.formatOnSave": true
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker",
+    "editor.formatOnSave": true
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "davidanson.vscode-markdownlint",
+    "editor.formatOnSave": true
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "sibiraj-s.vscode-scss-formatter",
+    "editor.formatOnSave": true
+  },
+  "files.associations": {
+    "*.conf": "nginx",
+    "*.dockerfile.j2": "jinja"
+  },
+  "emmet.includeLanguages": {
+    "jinja": "dockerfile"
+  },
+  "[jinja]": {
+    "editor.defaultFormatter": "samuelcolvin.jinjahtml",
+    "editor.formatOnSave": true
+  },
+  "editor.rulers": [120],
+  "plantuml.server": "https://www.plantuml.com/plantuml",
+  "plantuml.exportOutDir": "./",
+  "plantuml.exportFormat": "png",
+  "plantuml.render": "PlantUMLServer",
+  "python.analysis.ignore": [
+    "**/odoo/addons/**"
+  ],
+  "cSpell.language": "en,fr",
+  "cSpell.words": [
+    "categorie",
+    "faqs",
+    "Faqs",
+    "Faqsection",
+    "gtag",
+    "nodemon",
+    "odoo",
+    "Odoo",
+    "openreplay",
+    "openssl",
+    "postgres",
+    "postgresql",
+    "pycache",
+    "sqlite",
+    "tagcloud",
+    "venv",
+    "voyanceplus"
+  ],
+  "conventionalCommits.scopes": [
+    "front-end",
+    "SEO",
+    "back-end",
+    "DevOps",
+    "graphQL"
+  ]
+}
