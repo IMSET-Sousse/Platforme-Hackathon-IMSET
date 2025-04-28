@@ -1,36 +1,48 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Github } from "lucide-react"
+import { signIn } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function GitHubAuthPage() {
   const router = useRouter()
   const [status, setStatus] = useState<"loading" | "error" | "success">("loading")
   const [errorMessage, setErrorMessage] = useState("")
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Simuler le processus d'authentification
-    const timer = setTimeout(() => {
-      // Pour la démo, on simule une authentification réussie
-      // Dans une implémentation réelle, vous traiteriez ici le code d'autorisation GitHub
-      const success = true
+    // Check for error in URL query parameters (e.g., ?error=AccessDenied)
+    const error = searchParams.get("error")
+    if (error) {
+      setStatus("error")
+      setErrorMessage("Échec de l'authentification GitHub. Veuillez réessayer.")
+      return
+    }
 
-      if (success) {
-        setStatus("success")
-        // Rediriger vers le tableau de bord après une authentification réussie
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
-      } else {
+    // Initiate GitHub authentication
+    const authenticate = async () => {
+      try {
+        const result = await signIn("github", { redirect: false, callbackUrl: "/dashboard" })
+        if (result?.error) {
+          setStatus("error")
+          setErrorMessage("Échec de l'authentification GitHub. Veuillez réessayer.")
+        } else if (result?.ok) {
+          setStatus("success")
+          // Redirect to dashboard after a short delay to show success UI
+          setTimeout(() => {
+            router.push("/dashboard")
+          }, 1500)
+        }
+      } catch (err) {
         setStatus("error")
-        setErrorMessage("Échec de l'authentification GitHub. Veuillez réessayer.")
+        setErrorMessage("Une erreur inattendue s'est produite. Veuillez réessayer.")
       }
-    }, 2000)
+    }
 
-    return () => clearTimeout(timer)
-  }, [router])
+    authenticate()
+  }, [router, searchParams])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">

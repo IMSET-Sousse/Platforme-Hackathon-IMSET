@@ -1,6 +1,5 @@
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Github } from "lucide-react"
+import GithubSignInButton from "@/components/GithubSignInButton"
 import CountdownTimer from "@/components/countdown-timer"
 import Footer from "@/components/footer"
 
@@ -41,13 +40,7 @@ export default function Home() {
             passionnants et démontrez vos compétences techniques dans une compétition stimulante.
           </p>
 
-          <Button
-            className="bg-[#d7b369] hover:bg-[#d89f2b] text-white px-8 py-6 text-lg rounded-md flex items-center gap-2 transition-all"
-            size="lg"
-          >
-            <Github className="h-5 w-5" />
-            Se connecter avec GitHub
-          </Button>
+          <GithubSignInButton /> {/* Replaced Button with new component */}
 
           <div className="mt-16">
             <h2 className="text-2xl font-semibold mb-4 text-[#222222]">Le hackathon commence dans</h2>

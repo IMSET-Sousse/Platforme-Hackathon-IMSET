@@ -1,104 +1,27 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Search, Filter, Clock, CheckCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ChallengeCard, type Challenge } from "@/components/ui/challenge-card"
-import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { useToast } from "@/hooks/use-toast"
-import AuthenticatedLayout from "@/components/layout/authenticated-layout"
 import CountdownTimer from "@/components/countdown-timer"
+import AuthenticatedLayout from "@/components/layout/authenticated-layout"
+import { Button } from "@/components/ui/button"
+import { ChallengeCard } from "@/components/ui/challenge-card"
+import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import { CheckCircle, Clock, Filter, Search } from "lucide-react"
+import { useEffect, useState } from "react"
 
-// Données fictives pour la démo
-const MOCK_CHALLENGES: Challenge[] = [
-  {
-    id: "1",
-    title: "API RESTful avec Express",
-    description:
-      "Créer une API RESTful complète avec Express.js, incluant l'authentification JWT et la validation des données.",
-    difficulty: "medium",
-    category: "Backend",
-    isSelected: true,
-  },
-  {
-    id: "2",
-    title: "Application React Native",
-    description:
-      "Développer une application mobile cross-platform avec React Native qui consomme une API et gère l'état avec Redux.",
-    difficulty: "hard",
-    category: "Mobile",
-    isSelected: true,
-  },
-  {
-    id: "3",
-    title: "Dashboard Analytics",
-    description:
-      "Créer un tableau de bord d'analyse de données avec des graphiques interactifs et des filtres avancés.",
-    difficulty: "medium",
-    category: "Frontend",
-    isSelected: false,
-  },
-  {
-    id: "4",
-    title: "Système de recommandation ML",
-    description:
-      "Implémenter un système de recommandation basé sur le machine learning pour suggérer des produits aux utilisateurs.",
-    difficulty: "hard",
-    category: "Data Science",
-    isSelected: false,
-  },
-  {
-    id: "5",
-    title: "Chatbot avec NLP",
-    description:
-      "Développer un chatbot intelligent utilisant le traitement du langage naturel pour répondre aux questions des utilisateurs.",
-    difficulty: "hard",
-    category: "IA",
-    isSelected: false,
-  },
-  {
-    id: "6",
-    title: "Application de e-commerce",
-    description: "Créer une application de e-commerce complète avec panier, paiement et gestion des commandes.",
-    difficulty: "medium",
-    category: "Fullstack",
-    isSelected: false,
-  },
-  {
-    id: "7",
-    title: "Système de gestion de contenu",
-    description: "Développer un CMS personnalisé avec éditeur WYSIWYG et gestion des médias.",
-    difficulty: "medium",
-    category: "Fullstack",
-    isSelected: false,
-  },
-  {
-    id: "8",
-    title: "Application PWA",
-    description: "Créer une Progressive Web App avec fonctionnalités offline et notifications push.",
-    difficulty: "medium",
-    category: "Frontend",
-    isSelected: false,
-  },
-  {
-    id: "9",
-    title: "Microservices avec Docker",
-    description: "Implémenter une architecture microservices avec Docker et orchestration Kubernetes.",
-    difficulty: "hard",
-    category: "DevOps",
-    isSelected: false,
-  },
-  {
-    id: "10",
-    title: "Jeu HTML5 Canvas",
-    description: "Développer un jeu 2D interactif utilisant HTML5 Canvas et JavaScript.",
-    difficulty: "easy",
-    category: "Frontend",
-    isSelected: false,
-  },
-]
+// Updated Challenge type to match API response
+export type Challenge = {
+  id: string
+  title: string
+  description: string
+  difficulty: "easy" | "medium" | "hard"
+  tags: { id: number, name: string }[]
+  created_at?: string
+  isSelected?: boolean
+  category: string
+}
 
 // Date fictive pour la phase de sélection
 const SELECTION_END_DATE = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 jours à partir de maintenant
@@ -110,28 +33,54 @@ export default function ChallengesPage() {
   const [selectedChallenges, setSelectedChallenges] = useState<Challenge[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [tagFilter, setTagFilter] = useState<string>("all")
 
   useEffect(() => {
-    // Simuler le chargement des données
-    const timer = setTimeout(() => {
-      setChallenges(MOCK_CHALLENGES)
-      setSelectedChallenges(MOCK_CHALLENGES.filter((c) => c.isSelected))
-      setLoading(false)
-    }, 1000)
+    // Fetch challenges from API
+    const fetchChallenges = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/defis/")
+        const data = await response.json()
 
-    return () => clearTimeout(timer)
-  }, [])
+        // Add isSelected property to each challenge
+        const formattedChallenges = data.map((challenge: any) => ({
+          ...challenge,
+          isSelected: false,
+          // Ensure id is a string for consistency
+          id: String(challenge.id),
+          // Add category based on first tag for compatibility
+          category: challenge.tags.length > 0 ? challenge.tags[0].name : "Divers",
+          // Ensure description exists
+          description: challenge.description || "Aucune description disponible.",
+          // Ensure difficulty is one of the valid options
+          difficulty: ["easy", "medium", "hard"].includes(challenge.difficulty) ? challenge.difficulty : "medium"
+        }))
+
+        setChallenges(formattedChallenges)
+        setLoading(false)
+      } catch (error) {
+        console.error("Error fetching challenges:", error)
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les défis. Veuillez réessayer plus tard.",
+          variant: "error",
+        })
+        setLoading(false)
+      }
+    }
+
+    fetchChallenges()
+  }, [toast])
 
   const handleSelectChallenge = (id: string) => {
-    const challenge = challenges.find((c) => c.id === id)
+    const challenge = challenges.find((c) => String(c.id) === id)
     if (!challenge) return
 
     // Vérifier si le défi est déjà sélectionné
     if (challenge.isSelected) {
       // Désélectionner le défi
-      setChallenges(challenges.map((c) => (c.id === id ? { ...c, isSelected: false } : c)))
-      setSelectedChallenges(selectedChallenges.filter((c) => c.id !== id))
+      setChallenges(challenges.map((c) => (String(c.id) === id ? { ...c, isSelected: false } : c)))
+      setSelectedChallenges(selectedChallenges.filter((c) => String(c.id) !== id))
 
       toast({
         title: "Défi désélectionné",
@@ -150,7 +99,7 @@ export default function ChallengesPage() {
       }
 
       // Sélectionner le défi
-      setChallenges(challenges.map((c) => (c.id === id ? { ...c, isSelected: true } : c)))
+      setChallenges(challenges.map((c) => (String(c.id) === id ? { ...c, isSelected: true } : c)))
       setSelectedChallenges([...selectedChallenges, { ...challenge, isSelected: true }])
 
       toast({
@@ -171,16 +120,16 @@ export default function ChallengesPage() {
   }
 
   const filteredChallenges = challenges.filter((challenge) => {
-    const matchesSearch =
-      challenge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      challenge.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = challenge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (challenge.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false)
     const matchesDifficulty = difficultyFilter === "all" || challenge.difficulty === difficultyFilter
-    const matchesCategory = categoryFilter === "all" || challenge.category === categoryFilter
+    const matchesTag = tagFilter === "all" || challenge.tags.some(tag => tag.name === tagFilter)
 
-    return matchesSearch && matchesDifficulty && matchesCategory
+    return matchesSearch && matchesDifficulty && matchesTag
   })
 
-  const categories = Array.from(new Set(challenges.map((c) => c.category)))
+  // Extract all unique tags from challenges
+  const tags = Array.from(new Set(challenges.flatMap(c => c.tags.map(tag => tag.name))))
 
   if (loading) {
     return (
@@ -260,18 +209,18 @@ export default function ChallengesPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-[#8b8b8bde] mb-1">
-                    Catégorie
+                  <label htmlFor="tag" className="block text-sm font-medium text-[#8b8b8bde] mb-1">
+                    Tag
                   </label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Toutes les catégories" />
+                  <Select value={tagFilter} onValueChange={setTagFilter}>
+                    <SelectTrigger id="tag">
+                      <SelectValue placeholder="Tous les tags" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toutes les catégories</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      <SelectItem value="all">Tous les tags</SelectItem>
+                      {tags.map((tag) => (
+                        <SelectItem key={tag} value={tag}>
+                          {tag}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -284,7 +233,7 @@ export default function ChallengesPage() {
                   onClick={() => {
                     setSearchQuery("")
                     setDifficultyFilter("all")
-                    setCategoryFilter("all")
+                    setTagFilter("all")
                   }}
                 >
                   <Filter className="mr-2 h-4 w-4" />
@@ -307,13 +256,15 @@ export default function ChallengesPage() {
                         <div key={challenge.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                           <div>
                             <p className="font-medium text-sm">{challenge.title}</p>
-                            <p className="text-xs text-[#8b8b8bde]">{challenge.category}</p>
+                            <p className="text-xs text-[#8b8b8bde]">
+                              {challenge.tags.map(tag => tag.name).join(", ")}
+                            </p>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="text-[#710e20de] hover:bg-red-50 h-8 w-8 p-0"
-                            onClick={() => handleSelectChallenge(challenge.id)}
+                            onClick={() => handleSelectChallenge(String(challenge.id))}
                           >
                             <span className="sr-only">Retirer</span>
                             &times;
@@ -365,7 +316,7 @@ export default function ChallengesPage() {
                   onClick={() => {
                     setSearchQuery("")
                     setDifficultyFilter("all")
-                    setCategoryFilter("all")
+                    setTagFilter("all")
                   }}
                 >
                   Réinitialiser les filtres

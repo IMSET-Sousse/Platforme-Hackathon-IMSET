@@ -1,5 +1,6 @@
 import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/components/providers/auth-provider"
 import type { Metadata } from "next"
 import type React from "react"
 
@@ -25,9 +26,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-roboto">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          {children}
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+            {children}
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )
