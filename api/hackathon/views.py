@@ -3,8 +3,8 @@ from rest_framework import viewsets, filters, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Tag, Defi
-from .serializers import TagSerializer, DefiSerializer, DefiListSerializer
+from .models import Tag, Defi, Team
+from .serializers import TagSerializer, DefiSerializer, DefiListSerializer, TeamSerializer, TeamListSerializer
 
 # Create your views here.
 
@@ -38,4 +38,45 @@ class DefiViewSet(viewsets.ModelViewSet):
             
         defis = Defi.objects.filter(difficulty=difficulty)
         serializer = self.get_serializer(defis, many=True)
+        return Response(serializer.data)
+
+class TeamViewSet(viewsets.ModelViewSet):
+    queryset = Team.objects.all()
+    serializer_class = TeamSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description', 'leader', 'members']
+    ordering_fields = ['name', 'created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return TeamListSerializer
+        return TeamSerializer
+    
+    @action(detail=False, methods=['get'])
+    def by_leader(self, request):
+        leader = request.query_params.get('github_login', None)
+        if not leader:
+            return Response(
+                {"error": "GitHub login is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        teams = Team.objects.filter(leader=leader)
+        serializer = self.get_serializer(teams, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def by_member(self, request):
+        member = request.query_params.get('github_login', None)
+        if not member:
+            return Response(
+                {"error": "GitHub login is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Since members is stored as a JSONField list, we need to filter differently
+        # This is a simplified approach and might need optimization for large datasets
+        teams = Team.objects.all()
+        member_teams = [team for team in teams if member in team.members]
+        serializer = self.get_serializer(member_teams, many=True)
         return Response(serializer.data)

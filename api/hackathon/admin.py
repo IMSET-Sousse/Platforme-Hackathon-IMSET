@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Tag, Defi
+from .models import Tag, Defi, Team
 
 class TagAdmin(admin.ModelAdmin):
     list_display = ('name',)
@@ -17,5 +17,12 @@ class DefiAdmin(admin.ModelAdmin):
     
     display_tags.short_description = 'Tags'
 
+class TeamAdmin(admin.ModelAdmin):
+    list_display = ('name', 'leader', 'repository_link', 'created_at', 'updated_at')
+    list_filter = ('created_at',)
+    search_fields = ('name', 'description', 'leader', 'members')
+    readonly_fields = ('created_at', 'updated_at')
+
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Defi, DefiAdmin)
+admin.site.register(Team, TeamAdmin)

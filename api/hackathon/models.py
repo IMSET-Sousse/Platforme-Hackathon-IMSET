@@ -25,3 +25,16 @@ class Defi(models.Model):
     
     def __str__(self):
         return self.title
+
+
+class Team(models.Model):
+    name = models.CharField(max_length=64)
+    description = models.TextField()
+    repository_link = models.URLField()
+    leader = models.CharField(max_length=100)  # GitHub login of the team leader
+    members = models.JSONField(default=list)  # Store GitHub logins of team members as a JSON array
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name

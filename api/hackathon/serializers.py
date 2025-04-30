@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Tag, Defi
+from .models import Tag, Defi, Team
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,3 +32,14 @@ class DefiListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Defi
         fields = ['id', 'title', 'difficulty', 'tags', 'created_at']
+
+class TeamSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Team
+        fields = ['id', 'name', 'description', 'repository_link', 'leader', 'members', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+class TeamListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Team
+        fields = ['id', 'name', 'leader', 'created_at']
