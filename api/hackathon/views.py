@@ -67,16 +67,15 @@ class TeamViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def by_member(self, request):
-        member = request.query_params.get('github_login', None)
-        if not member:
+        login = request.query_params.get('github_login', None)
+        if not login:
             return Response(
                 {"error": "GitHub login is required"},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Since members is stored as a JSONField list, we need to filter differently
-        # This is a simplified approach and might need optimization for large datasets
+        # Find teams where the login appears in any member's login field
         teams = Team.objects.all()
-        member_teams = [team for team in teams if member in team.members]
+        member_teams = [team for team in teams if any(member.get('login') == login for member in team.members)]
         serializer = self.get_serializer(member_teams, many=True)
         return Response(serializer.data)
