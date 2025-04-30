@@ -32,7 +32,7 @@ class Team(models.Model):
     description = models.TextField()
     repository_link = models.URLField()
     leader = models.CharField(max_length=100)  # GitHub login of the team leader
-    members = models.JSONField(default=list)  # Store list of objects with login and avatar for team members
+    members = models.JSONField(default=list)  # Store GitHub logins of team members as a JSON array
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

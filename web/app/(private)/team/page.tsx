@@ -9,6 +9,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import {
+  ApiTeam,
+  TeamFormData,
+  addTeamMember,
+  createTeam,
+  deleteTeam,
+  fetchTeamByLeader,
+  removeTeamMember,
+  updateTeam
+} from "@/lib/api"
 import { CheckCircle, Edit, Github, LogOut, Search, Trash, UserMinus, UserPlus, Users, X } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
@@ -32,247 +42,345 @@ type TeamMember = {
 
 // Type for team data
 type TeamData = {
-  id: string;
+  id: number;
   name: string;
   description: string;
   repository: string;
-  inviteCode: string;
   isLeader: boolean;
   members: TeamMember[];
 }
+
+// Helper function to convert API team to frontend team format
+const mapApiTeamToTeamData = (apiTeam: ApiTeam, currentUserLogin: string): TeamData => {
+  // Create a list of team members from the API data
+  const members: TeamMember[] = [];
+
+  // Add leader as a member with "Leader" role
+  if (apiTeam.leader) {
+    members.push({
+      id: `user-${apiTeam.leader}`,
+      name: apiTeam.leader,
+      role: "Leader",
+      avatar: `https://github.com/${apiTeam.leader}.png`,
+      isCurrentUser: apiTeam.leader === currentUserLogin,
+    });
+  }
+
+  // Add regular members
+  if (apiTeam.members && apiTeam.members.length > 0) {
+    apiTeam.members.forEach(memberLogin => {
+      // Skip if member is already added as leader
+      if (memberLogin !== apiTeam.leader) {
+        members.push({
+          id: `user-${memberLogin}`,
+          name: memberLogin,
+          role: "Membre",
+          avatar: `https://github.com/${memberLogin}.png`,
+          isCurrentUser: memberLogin === currentUserLogin,
+        });
+      }
+    });
+  }
+
+  return {
+    id: apiTeam.id,
+    name: apiTeam.name,
+    description: apiTeam.description,
+    repository: apiTeam.repository_link,
+    isLeader: apiTeam.leader === currentUserLogin,
+    members
+  };
+};
 
 export default function TeamPage() {
   const { toast } = useToast()
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
-
-  // Default empty team
-  const emptyTeam: TeamData = {
-    id: "",
-    name: "",
-    description: "",
-    repository: "",
-    inviteCode: "",
-    isLeader: true,
-    members: [],
-  }
-
   const [team, setTeam] = useState<TeamData | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TeamFormData>({
     name: "",
     description: "",
-    repository: "",
+    repository_link: "",
   })
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [createFormData, setCreateFormData] = useState({
+  const [createFormData, setCreateFormData] = useState<TeamFormData>({
     name: "",
     description: "",
-    repository: "",
+    repository_link: "",
   })
   const [showInviteSearch, setShowInviteSearch] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState<GitHubUser[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isDeletingTeam, setIsDeletingTeam] = useState(false)
 
-  // Load user data when session is available
+  // Load user's team data when session is available
   useEffect(() => {
-    if (status === "loading") return
-
-    if (session?.user) {
-      // In a real app, you would fetch team data from your API here
-      // For now, we'll create a mock team with the authenticated user as leader
-
-      // Mock team with current user as leader
-      const mockTeam: TeamData = {
-        id: "team-1",
-        name: "CodeCrafters",
-        description: "Une équipe passionnée par le développement web et mobile, spécialisée dans les technologies JavaScript modernes.",
-        repository: "https://github.com/codecrafters/hackathon-project",
-        inviteCode: "CODECRAFTERS-2025",
-        isLeader: true,
-        members: [
-          {
-            id: "user-1",
-            name: session.user.name || "Utilisateur",
-            role: "Leader",
-            avatar: session.user.image || "/placeholder.svg?height=40&width=40",
-            isCurrentUser: true,
-          }
-        ],
+    const loadTeamData = async () => {
+      if (status === "loading") return;
+      if (!session?.user) {
+        setIsLoading(false);
+        return;
       }
 
-      setTeam(mockTeam)
-      setFormData({
-        name: mockTeam.name,
-        description: mockTeam.description,
-        repository: mockTeam.repository,
-      })
-    }
+      try {
+        // Get GitHub login from user session
+        const githubLogin = session.user.name;
 
-    setIsLoading(false)
-  }, [session, status])
+        if (!githubLogin) {
+          console.error("GitHub login not available in session");
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch team where user is leader
+        const apiTeam = await fetchTeamByLeader(githubLogin);
+
+        if (apiTeam) {
+          const teamData = mapApiTeamToTeamData(apiTeam, githubLogin);
+          setTeam(teamData);
+          setFormData({
+            name: apiTeam.name,
+            description: apiTeam.description,
+            repository_link: apiTeam.repository_link,
+          });
+        }
+      } catch (error) {
+        console.error("Error loading team data:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les données de l'équipe.",
+          variant: "error",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTeamData();
+  }, [session, status, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleCreateInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setCreateFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setCreateFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const handleSaveTeam = () => {
-    // Dans une application réelle, vous enverriez ces données à votre API
-    setTeam((prev) => prev ? { ...prev, ...formData } : null)
-    setIsEditing(false)
-    toast({
-      title: "Équipe mise à jour",
-      description: "Les informations de l'équipe ont été mises à jour avec succès.",
-      variant: "success",
-    })
-  }
+  const handleSaveTeam = async () => {
+    if (!team) return;
 
-  const handleCreateTeam = () => {
-    // Dans une application réelle, vous enverriez ces données à votre API
-    if (!session?.user) return
+    try {
+      const updatedApiTeam = await updateTeam(team.id, {
+        name: formData.name,
+        description: formData.description,
+        repository_link: formData.repository_link,
+      });
 
-    const newTeam: TeamData = {
-      id: "team-" + Date.now(),
-      name: createFormData.name,
-      description: createFormData.description,
-      repository: createFormData.repository,
-      inviteCode: `${createFormData.name.toUpperCase().substring(0, 8)}-${Math.floor(Math.random() * 9000) + 1000}`,
-      isLeader: true,
-      members: [
-        {
-          id: "user-1",
-          name: session.user.name || "Utilisateur",
-          role: "Leader",
-          avatar: session.user.image || "/placeholder.svg?height=40&width=40",
-          isCurrentUser: true,
-        }
-      ],
+      if (updatedApiTeam && session?.user?.name) {
+        const updatedTeam = mapApiTeamToTeamData(updatedApiTeam, session.user.name);
+        setTeam(updatedTeam);
+        setIsEditing(false);
+
+        toast({
+          title: "Équipe mise à jour",
+          description: "Les informations de l'équipe ont été mises à jour avec succès.",
+          variant: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating team:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour l'équipe.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleCreateTeam = async () => {
+    if (!session?.user?.name) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour créer une équipe.",
+        variant: "error",
+      });
+      return;
     }
 
-    setTeam(newTeam)
-    setFormData({
-      name: newTeam.name,
-      description: newTeam.description,
-      repository: newTeam.repository,
-    })
-    setShowCreateForm(false)
-    toast({
-      title: "Équipe créée",
-      description: "Votre équipe a été créée avec succès.",
-      variant: "success",
-    })
-  }
+    try {
+      const newApiTeam = await createTeam(
+        {
+          name: createFormData.name,
+          description: createFormData.description,
+          repository_link: createFormData.repository_link,
+        },
+        session.user.name
+      );
 
-  const handleCopyInviteCode = () => {
-    if (!team?.inviteCode) return
+      if (newApiTeam) {
+        const newTeam = mapApiTeamToTeamData(newApiTeam, session.user.name);
+        setTeam(newTeam);
+        setFormData({
+          name: newApiTeam.name,
+          description: newApiTeam.description,
+          repository_link: newApiTeam.repository_link,
+        });
+        setShowCreateForm(false);
 
-    navigator.clipboard.writeText(team.inviteCode)
-    toast({
-      title: "Code d'invitation copié",
-      description: "Le code d'invitation a été copié dans le presse-papiers.",
-      variant: "success",
-    })
-  }
-
-  const handleRemoveMember = (memberId: string) => {
-    // Dans une application réelle, vous enverriez cette demande à votre API
-    setTeam((prev) => {
-      if (!prev) return prev
-
-      return {
-        ...prev,
-        members: prev.members.filter((member) => member.id !== memberId),
+        toast({
+          title: "Équipe créée",
+          description: "Votre équipe a été créée avec succès.",
+          variant: "success",
+        });
       }
-    })
-    toast({
-      title: "Membre retiré",
-      description: "Le membre a été retiré de l'équipe.",
-      variant: "success",
-    })
-  }
+    } catch (error) {
+      console.error("Error creating team:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer l'équipe.",
+        variant: "error",
+      });
+    }
+  };
 
-  const handleLeaveTeam = () => {
-    // Dans une application réelle, vous enverriez cette demande à votre API
-    // et redirigeriez l'utilisateur
-    toast({
-      title: "Équipe quittée",
-      description: "Vous avez quitté l'équipe avec succès.",
-      variant: "success",
-    })
-    // Simuler l'absence d'équipe
-    setTeam(null)
-  }
+  const handleRemoveMember = async (memberId: string) => {
+    if (!team) return;
+
+    // Extract GitHub login from the member ID
+    const memberLogin = memberId.replace('user-', '');
+
+    try {
+      const updatedApiTeam = await removeTeamMember(team.id, memberLogin);
+
+      if (updatedApiTeam && session?.user?.name) {
+        const updatedTeam = mapApiTeamToTeamData(updatedApiTeam, session.user.name);
+        setTeam(updatedTeam);
+
+        toast({
+          title: "Membre retiré",
+          description: "Le membre a été retiré de l'équipe.",
+          variant: "success",
+        });
+      }
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de retirer le membre de l'équipe.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!team || !session?.user?.name) return;
+
+    try {
+      await removeTeamMember(team.id, session.user.name);
+      setTeam(null);
+
+      toast({
+        title: "Équipe quittée",
+        description: "Vous avez quitté l'équipe avec succès.",
+        variant: "success",
+      });
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de quitter l'équipe.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!team) return;
+
+    setIsDeletingTeam(true);
+
+    try {
+      const success = await deleteTeam(team.id);
+
+      if (success) {
+        setTeam(null);
+        toast({
+          title: "Équipe supprimée",
+          description: "L'équipe a été supprimée avec succès.",
+          variant: "success",
+        });
+      } else {
+        throw new Error("Failed to delete team");
+      }
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'équipe.",
+        variant: "error",
+      });
+    } finally {
+      setIsDeletingTeam(false);
+    }
+  };
 
   const searchGitHubUsers = async () => {
-    if (!searchTerm.trim()) return
+    if (!searchTerm.trim()) return;
 
-    setIsSearching(true)
+    setIsSearching(true);
     try {
-      const response = await fetch(`https://api.github.com/search/users?q=${encodeURIComponent(searchTerm)}`)
-      const data = await response.json()
+      const response = await fetch(`https://api.github.com/search/users?q=${encodeURIComponent(searchTerm)}`);
+      const data = await response.json();
 
       if (data.items) {
-        setSearchResults(data.items.slice(0, 5))
+        setSearchResults(data.items.slice(0, 5));
       }
     } catch (error) {
       toast({
         title: "Erreur",
         description: "Impossible de rechercher des utilisateurs GitHub.",
         variant: "error",
-      })
+      });
     } finally {
-      setIsSearching(false)
+      setIsSearching(false);
     }
-  }
+  };
 
-  const handleInviteUser = (user: GitHubUser) => {
-    // Dans une application réelle, vous enverriez cette demande à votre API
-    const newMember = {
-      id: `user-${user.id}`,
-      name: user.login,
-      role: "Membre",
-      avatar: user.avatar_url,
-      isCurrentUser: false,
-    }
+  const handleInviteUser = async (user: GitHubUser) => {
+    if (!team) return;
 
-    // Vérifier si l'utilisateur existe déjà dans l'équipe
-    const memberExists = team?.members.some(member => member.id === `user-${user.id}`)
+    try {
+      const updatedApiTeam = await addTeamMember(team.id, user.login);
 
-    if (!memberExists && team) {
-      setTeam(prev => {
-        if (!prev) return prev
+      if (updatedApiTeam && session?.user?.name) {
+        const updatedTeam = mapApiTeamToTeamData(updatedApiTeam, session.user.name);
+        setTeam(updatedTeam);
 
-        return {
-          ...prev,
-          members: [...prev.members, newMember]
-        }
-      })
+        toast({
+          title: "Membre invité",
+          description: `${user.login} a été ajouté à l'équipe.`,
+          variant: "success",
+        });
+      }
 
+      // Réinitialiser la recherche
+      setShowInviteSearch(false);
+      setSearchTerm("");
+      setSearchResults([]);
+    } catch (error) {
+      console.error("Error inviting user:", error);
       toast({
-        title: "Membre invité",
-        description: `${user.login} a été ajouté à l'équipe.`,
-        variant: "success",
-      })
-    } else {
-      toast({
-        title: "Membre déjà présent",
-        description: `${user.login} est déjà membre de l'équipe.`,
-        variant: "default",
-      })
+        title: "Erreur",
+        description: `Impossible d'ajouter ${user.login} à l'équipe.`,
+        variant: "error",
+      });
     }
-
-    // Réinitialiser la recherche
-    setShowInviteSearch(false)
-    setSearchTerm("")
-    setSearchResults([])
-  }
+  };
 
   // Loading state
   if (isLoading) {
@@ -345,7 +453,7 @@ export default function TeamPage() {
                         />
                       </div>
                       <div>
-                        <label htmlFor="repository" className="block text-sm font-medium text-[#222222] mb-1">
+                        <label htmlFor="repository_link" className="block text-sm font-medium text-[#222222] mb-1">
                           URL du dépôt GitHub
                         </label>
                         <div className="flex">
@@ -353,9 +461,9 @@ export default function TeamPage() {
                             <Github className="h-4 w-4 text-gray-500" />
                           </div>
                           <Input
-                            id="repository"
-                            name="repository"
-                            value={formData.repository}
+                            id="repository_link"
+                            name="repository_link"
+                            value={formData.repository_link}
                             onChange={handleInputChange}
                             className="rounded-l-none w-full"
                           />
@@ -579,9 +687,11 @@ export default function TeamPage() {
                       <Button
                         variant="outline"
                         className="w-full justify-start text-[#710e20de] border-[#710e20de] hover:bg-red-50"
+                        onClick={handleDeleteTeam}
+                        disabled={isDeletingTeam}
                       >
                         <Trash className="mr-2 h-4 w-4" />
-                        Dissoudre l'équipe
+                        {isDeletingTeam ? "Suppression..." : "Dissoudre l'équipe"}
                       </Button>
                     </div>
                   </CardContent>
@@ -632,7 +742,7 @@ export default function TeamPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="create-repository" className="block text-sm font-medium text-[#222222] mb-1">
+                    <label htmlFor="create-repository_link" className="block text-sm font-medium text-[#222222] mb-1">
                       URL du dépôt GitHub
                     </label>
                     <div className="flex">
@@ -640,9 +750,9 @@ export default function TeamPage() {
                         <Github className="h-4 w-4 text-gray-500" />
                       </div>
                       <Input
-                        id="create-repository"
-                        name="repository"
-                        value={createFormData.repository}
+                        id="create-repository_link"
+                        name="repository_link"
+                        value={createFormData.repository_link}
                         onChange={handleCreateInputChange}
                         className="rounded-l-none w-full"
                         placeholder="https://github.com/votre-equipe/projet"
