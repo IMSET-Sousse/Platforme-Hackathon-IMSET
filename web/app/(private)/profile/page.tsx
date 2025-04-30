@@ -1,19 +1,14 @@
 'use client'
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
-import { Edit, Save } from "lucide-react";
+import AuthenticatedLayout from "@/components/layout/authenticated-layout";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import AuthenticatedLayout from "@/components/layout/authenticated-layout";
-
-interface GitHubUser {
-  login: string;
-  avatar_url: string;
-}
+import { Edit, Save } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 interface UserProfile {
   username: string;
@@ -36,52 +31,22 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchGitHubData = async () => {
-      if (status === "loading") return;
-      
-      if (!session?.user?.name) {
-        setIsLoading(false);
-        console.error("GitHub username is missing");
-        toast({
-          title: "Error",
-          description: "GitHub username is missing.",
-          variant: "error",
-        });
-        return;
-      }
+    if (status === "loading") return;
 
-      try {
-        const response = await fetch(`https://api.github.com/users/${session.user.name}`, {
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
-        });
+    if (!session?.user) {
+      setIsLoading(false);
+      return;
+    }
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch GitHub data. Status code: ${response.status}`);
-        }
+    // Fetch user data from authenticated session
+    setUser({
+      username: session.user.name || "",
+      avatar: session.user.image || "",
+      description: user.description,
+    });
 
-        const userData: GitHubUser = await response.json();
-        setUser({
-          username: userData.login,
-          avatar: userData.avatar_url,
-          description: user.description, // Keep existing description
-        });
-      } catch (error) {
-        console.error("Error fetching GitHub user data:", error);
-        toast({
-          title: "Error",
-          description: "Could not fetch GitHub user information.",
-          variant: "error",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchGitHubData();
-  }, [session, status, toast, user.description]);
+    setIsLoading(false);
+  }, [session, status, user.description]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const { value } = e.target;
@@ -163,7 +128,7 @@ export default function ProfilePage() {
                     </Avatar>
                     <div>
                       <h3 className="text-lg font-semibold text-[#222222]">{user.username}</h3>
-                      <p className="text-[#8b8b8bde]">{user.username}</p>
+                      <p className="text-[#8b8b8bde]">@{user.username}</p>
                     </div>
                   </div>
 

@@ -25,9 +25,10 @@ import {
   Users,
   X,
 } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 interface AuthenticatedLayoutProps {
@@ -37,11 +38,20 @@ interface AuthenticatedLayoutProps {
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: session, status } = useSession()
 
   // Fermer le menu mobile lors du changement de page
   useEffect(() => {
     setMobileMenuOpen(false)
   }, [pathname])
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
+    }
+  }, [status, router])
 
   const navigation = [
     { name: "Tableau de bord", href: "/dashboard", icon: Home },
@@ -51,12 +61,29 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
     { name: "Soumissions", href: "/submissions", icon: Send },
   ]
 
-  // Utilisateur fictif pour la démo
+  // Handle user sign out
+  const handleSignOut = () => {
+    signOut({
+      callbackUrl: '/',
+      redirect: true
+    })
+  }
+
+  // If session is loading, show minimal loading UI
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center dark:bg-[#121212]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d7b369]"></div>
+      </div>
+    )
+  }
+
+  // User data from session
   const user = {
-    name: "Ahmed Ben Ali",
-    email: "ahmed@example.com",
-    avatar: "/placeholder.svg?height=40&width=40",
-    isAdmin: true,
+    name: session?.user?.name || "Utilisateur",
+    email: session?.user?.email || "",
+    avatar: session?.user?.image || "/placeholder.svg?height=40&width=40",
+    isAdmin: session?.user?.email === "admin@example.com", // Example admin check - adjust based on your auth logic
   }
 
   return (
@@ -139,7 +166,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar>
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                      <AvatarImage src={user.avatar} alt={user.name} />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -160,11 +187,12 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="dark:border-gray-800" />
-                  <DropdownMenuItem asChild>
-                    <Link href="/" className="cursor-pointer flex items-center text-[#710e20de] dark:text-red-400">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Déconnexion</span>
-                    </Link>
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="cursor-pointer flex items-center text-[#710e20de] dark:text-red-400"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Déconnexion</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
