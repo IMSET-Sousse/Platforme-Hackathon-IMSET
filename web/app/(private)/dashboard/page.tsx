@@ -139,12 +139,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-[#8b8b8bde] text-sm mt-1 truncate max-w-xs">Dépôt: {MOCK_TEAM.repository}</p>
                     </div>
-                    <div className="mt-4 md:mt-0">
-                      <Button className="bg-[#d7b369] hover:bg-[#d89f2b]">
-                        <Users className="mr-2 h-4 w-4" />
-                        Inviter des membres
-                      </Button>
-                    </div>
+                    
                   </div>
                 ) : (
                   <div className="text-center py-6">

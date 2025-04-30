@@ -2,58 +2,67 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { Users, UserPlus, UserMinus, Copy, Github, Edit, Trash, LogOut, CheckCircle } from "lucide-react"
+import AuthenticatedLayout from "@/components/layout/authenticated-layout"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import AuthenticatedLayout from "@/components/layout/authenticated-layout"
+import { CheckCircle, Edit, Github, LogOut, Search, Trash, UserMinus, UserPlus, Users, X } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
 
-// Données fictives pour la démo
-const MOCK_TEAM = {
-  id: "team-1",
-  name: "CodeCrafters",
-  description:
-    "Une équipe passionnée par le développement web et mobile, spécialisée dans les technologies JavaScript modernes.",
-  repository: "https://github.com/codecrafters/hackathon-project",
-  inviteCode: "CODECRAFTERS-2025",
-  isLeader: true,
-  members: [
-    {
-      id: "user-1",
-      name: "Ahmed Ben Ali",
-      role: "Leader",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isCurrentUser: true,
-    },
-    {
-      id: "user-2",
-      name: "Sarah Trabelsi",
-      role: "Membre",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isCurrentUser: false,
-    },
-    {
-      id: "user-3",
-      name: "Mohamed Karim",
-      role: "Membre",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isCurrentUser: false,
-    },
-  ],
+// Type for GitHub user search results
+type GitHubUser = {
+  id: number;
+  login: string;
+  avatar_url: string;
+  html_url: string;
+}
+
+// Type for team member
+type TeamMember = {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  isCurrentUser: boolean;
+}
+
+// Type for team data
+type TeamData = {
+  id: string;
+  name: string;
+  description: string;
+  repository: string;
+  inviteCode: string;
+  isLeader: boolean;
+  members: TeamMember[];
 }
 
 export default function TeamPage() {
   const { toast } = useToast()
-  const [team, setTeam] = useState(MOCK_TEAM)
+  const { data: session, status } = useSession()
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Default empty team
+  const emptyTeam: TeamData = {
+    id: "",
+    name: "",
+    description: "",
+    repository: "",
+    inviteCode: "",
+    isLeader: true,
+    members: [],
+  }
+
+  const [team, setTeam] = useState<TeamData | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
-    name: team.name,
-    description: team.description,
-    repository: team.repository,
+    name: "",
+    description: "",
+    repository: "",
   })
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createFormData, setCreateFormData] = useState({
@@ -61,6 +70,48 @@ export default function TeamPage() {
     description: "",
     repository: "",
   })
+  const [showInviteSearch, setShowInviteSearch] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [searchResults, setSearchResults] = useState<GitHubUser[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  // Load user data when session is available
+  useEffect(() => {
+    if (status === "loading") return
+
+    if (session?.user) {
+      // In a real app, you would fetch team data from your API here
+      // For now, we'll create a mock team with the authenticated user as leader
+
+      // Mock team with current user as leader
+      const mockTeam: TeamData = {
+        id: "team-1",
+        name: "CodeCrafters",
+        description: "Une équipe passionnée par le développement web et mobile, spécialisée dans les technologies JavaScript modernes.",
+        repository: "https://github.com/codecrafters/hackathon-project",
+        inviteCode: "CODECRAFTERS-2025",
+        isLeader: true,
+        members: [
+          {
+            id: "user-1",
+            name: session.user.name || "Utilisateur",
+            role: "Leader",
+            avatar: session.user.image || "/placeholder.svg?height=40&width=40",
+            isCurrentUser: true,
+          }
+        ],
+      }
+
+      setTeam(mockTeam)
+      setFormData({
+        name: mockTeam.name,
+        description: mockTeam.description,
+        repository: mockTeam.repository,
+      })
+    }
+
+    setIsLoading(false)
+  }, [session, status])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -74,7 +125,7 @@ export default function TeamPage() {
 
   const handleSaveTeam = () => {
     // Dans une application réelle, vous enverriez ces données à votre API
-    setTeam((prev) => ({ ...prev, ...formData }))
+    setTeam((prev) => prev ? { ...prev, ...formData } : null)
     setIsEditing(false)
     toast({
       title: "Équipe mise à jour",
@@ -85,13 +136,32 @@ export default function TeamPage() {
 
   const handleCreateTeam = () => {
     // Dans une application réelle, vous enverriez ces données à votre API
-    const newTeam = {
-      ...team,
+    if (!session?.user) return
+
+    const newTeam: TeamData = {
+      id: "team-" + Date.now(),
       name: createFormData.name,
       description: createFormData.description,
       repository: createFormData.repository,
+      inviteCode: `${createFormData.name.toUpperCase().substring(0, 8)}-${Math.floor(Math.random() * 9000) + 1000}`,
+      isLeader: true,
+      members: [
+        {
+          id: "user-1",
+          name: session.user.name || "Utilisateur",
+          role: "Leader",
+          avatar: session.user.image || "/placeholder.svg?height=40&width=40",
+          isCurrentUser: true,
+        }
+      ],
     }
+
     setTeam(newTeam)
+    setFormData({
+      name: newTeam.name,
+      description: newTeam.description,
+      repository: newTeam.repository,
+    })
     setShowCreateForm(false)
     toast({
       title: "Équipe créée",
@@ -101,6 +171,8 @@ export default function TeamPage() {
   }
 
   const handleCopyInviteCode = () => {
+    if (!team?.inviteCode) return
+
     navigator.clipboard.writeText(team.inviteCode)
     toast({
       title: "Code d'invitation copié",
@@ -111,10 +183,14 @@ export default function TeamPage() {
 
   const handleRemoveMember = (memberId: string) => {
     // Dans une application réelle, vous enverriez cette demande à votre API
-    setTeam((prev) => ({
-      ...prev,
-      members: prev.members.filter((member) => member.id !== memberId),
-    }))
+    setTeam((prev) => {
+      if (!prev) return prev
+
+      return {
+        ...prev,
+        members: prev.members.filter((member) => member.id !== memberId),
+      }
+    })
     toast({
       title: "Membre retiré",
       description: "Le membre a été retiré de l'équipe.",
@@ -131,7 +207,84 @@ export default function TeamPage() {
       variant: "success",
     })
     // Simuler l'absence d'équipe
-    setTeam(null as any)
+    setTeam(null)
+  }
+
+  const searchGitHubUsers = async () => {
+    if (!searchTerm.trim()) return
+
+    setIsSearching(true)
+    try {
+      const response = await fetch(`https://api.github.com/search/users?q=${encodeURIComponent(searchTerm)}`)
+      const data = await response.json()
+
+      if (data.items) {
+        setSearchResults(data.items.slice(0, 5))
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de rechercher des utilisateurs GitHub.",
+        variant: "error",
+      })
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleInviteUser = (user: GitHubUser) => {
+    // Dans une application réelle, vous enverriez cette demande à votre API
+    const newMember = {
+      id: `user-${user.id}`,
+      name: user.login,
+      role: "Membre",
+      avatar: user.avatar_url,
+      isCurrentUser: false,
+    }
+
+    // Vérifier si l'utilisateur existe déjà dans l'équipe
+    const memberExists = team?.members.some(member => member.id === `user-${user.id}`)
+
+    if (!memberExists && team) {
+      setTeam(prev => {
+        if (!prev) return prev
+
+        return {
+          ...prev,
+          members: [...prev.members, newMember]
+        }
+      })
+
+      toast({
+        title: "Membre invité",
+        description: `${user.login} a été ajouté à l'équipe.`,
+        variant: "success",
+      })
+    } else {
+      toast({
+        title: "Membre déjà présent",
+        description: `${user.login} est déjà membre de l'équipe.`,
+        variant: "default",
+      })
+    }
+
+    // Réinitialiser la recherche
+    setShowInviteSearch(false)
+    setSearchTerm("")
+    setSearchResults([])
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <AuthenticatedLayout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d7b369]"></div>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    )
   }
 
   return (
@@ -239,23 +392,6 @@ export default function TeamPage() {
                           {team.repository}
                         </a>
                       </div>
-                      {team.isLeader && (
-                        <div>
-                          <h3 className="text-sm font-medium text-[#8b8b8bde]">Code d'invitation</h3>
-                          <div className="flex items-center mt-1">
-                            <code className="bg-gray-100 px-3 py-1 rounded text-[#222222] flex-grow">
-                              {team.inviteCode}
-                            </code>
-                            <Button variant="ghost" size="sm" onClick={handleCopyInviteCode} className="ml-2">
-                              <Copy className="h-4 w-4" />
-                              <span className="sr-only">Copier</span>
-                            </Button>
-                          </div>
-                          <p className="text-xs text-[#8b8b8bde] mt-1">
-                            Partagez ce code avec les personnes que vous souhaitez inviter dans votre équipe.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </CardContent>
@@ -271,6 +407,7 @@ export default function TeamPage() {
                         variant="outline"
                         size="sm"
                         className="text-[#d7b369] border-[#d7b369] hover:bg-[#d7b369]/10"
+                        onClick={() => setShowInviteSearch(!showInviteSearch)}
                       >
                         <UserPlus className="mr-2 h-4 w-4" />
                         Inviter
@@ -280,6 +417,81 @@ export default function TeamPage() {
                   <CardDescription>{team.members.length} membres dans l'équipe</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {showInviteSearch && (
+                    <div className="mb-5 space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                      <p className="text-sm font-medium text-[#222222]">Rechercher un utilisateur GitHub</p>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            placeholder="Entrez un nom d'utilisateur..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pr-10"
+                          />
+                          {searchTerm && (
+                            <button
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              onClick={() => setSearchTerm("")}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <Button
+                          onClick={searchGitHubUsers}
+                          disabled={isSearching || !searchTerm.trim()}
+                          className="bg-[#d7b369] hover:bg-[#d89f2b]"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Rechercher
+                        </Button>
+                      </div>
+
+                      {isSearching && <p className="text-sm text-[#8b8b8bde]">Recherche en cours...</p>}
+
+                      {searchResults.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-[#8b8b8bde]">Résultats de recherche:</p>
+                          <div className="max-h-60 overflow-y-auto space-y-2">
+                            {searchResults.map(user => (
+                              <div key={user.id} className="flex items-center justify-between p-3 bg-white rounded-md border border-gray-100">
+                                <div className="flex items-center space-x-3">
+                                  <Avatar>
+                                    <AvatarImage src={user.avatar_url} alt={user.login} />
+                                    <AvatarFallback>{user.login.charAt(0).toUpperCase()}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium">{user.login}</p>
+                                    <a
+                                      href={user.html_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-[#d7b369] hover:text-[#d89f2b]"
+                                    >
+                                      Voir profil
+                                    </a>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  className="bg-[#d7b369] hover:bg-[#d89f2b]"
+                                  onClick={() => handleInviteUser(user)}
+                                >
+                                  <UserPlus className="h-4 w-4 mr-1" />
+                                  Inviter
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {searchTerm && searchResults.length === 0 && !isSearching && (
+                        <p className="text-sm text-[#8b8b8bde]">Aucun résultat trouvé pour "{searchTerm}"</p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     {team.members.map((member) => (
                       <div
